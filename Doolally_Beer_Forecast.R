@@ -11,8 +11,6 @@ Created on Thu June 27 12:05:21 2018
 setwd("D:\\practice_r\\doolally")
 #Enter location name:
 location_n = "andheri"
-#Enter category name:
-category_n = "beer"
 #Enter date upto which the model has to be trained
 train_upto_date = "2018-04-30"
 #Enter future prediction days
@@ -67,7 +65,8 @@ cn <- dbConnect(drv      = RMySQL::MySQL(),
                 port     = 3306, 
                 dbname   = "DoolallySales")
 
-POS_data <- dbGetQuery(cn, "SELECT * FROM doolally_pos_master_staging WHERE order_status = 'printed' ;")
+SQL <- paste("SELECT * FROM doolally_pos_master_staging WHERE order_status = 'printed' AND category_name = 'beer' AND location_name = '", location_n, "';", sep = "")
+POS_data <- dbGetQuery(cn,  SQL)
 
 # setwd("D:\\practice_r\\doolally")
 # POS_data <- read_csv("doolally_pos_master_staging.csv")
@@ -115,6 +114,9 @@ pos <- pos[(which(pos$final_total != 0)),]
 pos <- pos[(which(!pos$final_total < 0)),] # 4 negative final_total values removed
 
 pos <- pos[which(pos$order_status == "printed" | pos$order_status == "save") ,]
+
+pos$beer_litres <- as.integer(pos$beer_litres)
+pos$item_quantity <- as.integer(pos$item_quantity)
 pos$beer_litres <- pos$beer_litres * pos$item_quantity 
 
 
