@@ -11,6 +11,8 @@ Created on Thu June 27 12:05:21 2018
 setwd("D:\\practice_r\\doolally")
 #Enter location name:
 location_n = "andheri"
+#Enter category name
+category_n = "beer"
 #Enter date upto which the model has to be trained
 train_upto_date = "2018-04-30"
 #Enter future prediction days
