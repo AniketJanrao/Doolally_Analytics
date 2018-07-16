@@ -1,0 +1,85 @@
+import matplotlib.pyplot as plt
+import pandas as pd
+import math
+from keras.models import Sequential
+from keras.layers import Dense
+from keras.layers import LSTM
+from sklearn.preprocessing import MinMaxScaler
+from sklearn.metrics import mean_squared_error
+import numpy as np
+#from sklearn.metrics import accuracy_score
+
+
+np.random.seed(7)
+
+File_name = r'Belgian wit_andheri.csv'
+df = pd.read_csv(File_name, usecols=[2])    # "usecols" just to get only beer consumption column (converted into litres)
+dx=df[:845]                                 #  Considering data till 31st of March
+dataset = dx.values
+dataset = dataset.astype('float32')
+
+
+# normalize the dataset, ranging from 0 to 1
+scaler = MinMaxScaler(feature_range=(0, 1))
+dataset = scaler.fit_transform(dataset)
+
+
+# split into train and test sets ( 90% and 10% )
+train_size = int(len(dataset) * 0.90)
+test_size = len(dataset) - train_size
+train, test = dataset[0:train_size, :], dataset[train_size:len(dataset), :]
+print((len(train), len(test)))
+
+
+# convert an array of values into a 1-D matrix with only target values i.e Beer Consumption
+def Dataset_oneD(dataset, look_back=1):
+	data_A, data_B = [], []
+	for i in range(len(dataset)-look_back-1):
+		a = dataset[i:(i+look_back), 0]
+		data_A.append(a)
+		data_B.append(dataset[i + look_back, 0])
+	return np.array(data_A), np.array(data_B)
+
+
+# reshape into X=t and Y=t+1, as for LSTM to work
+look_back = 1
+trainX, trainY = Dataset_oneD(train, look_back)
+testX, testY = Dataset_oneD(test, look_back)
+
+
+# reshape input to be [samples(date), time steps (i.e. one day), features]
+trainX = np.reshape(trainX, (trainX.shape[0], 1, trainX.shape[1]))
+testX = np.reshape(testX, (testX.shape[0], 1, testX.shape[1]))
+
+
+
+# Create LSTM network and fit
+model = Sequential()
+model.add(LSTM(4, input_shape=(1, look_back)))
+model.add(Dense(1))
+model.compile(loss='mean_squared_error', optimizer='adam')
+model.fit(trainX, trainY, epochs=11, batch_size=1, verbose=2)
+
+
+# make predictions
+trainPredict = model.predict(trainX)
+testPredict_1 = model.predict(testX)
+
+# invert predictions (De-Normalize from (0,1))
+trainPredict = scaler.inverse_transform(trainPredict)
+trainY = scaler.inverse_transform([trainY])
+testPredict = scaler.inverse_transform(testPredict_1)
+testY = scaler.inverse_transform([testY])
+
+# calculate root mean squared error
+trainScore = math.sqrt(mean_squared_error(trainY[0], trainPredict[:, 0]))
+print(('Train Score: %.2f RMSE' % (trainScore)))
+testScore = math.sqrt(mean_squared_error(testY[0], testPredict[:, 0]))
+print(('Test Score: %.2f RMSE' % (testScore)))
+
+# plot baseline and predictions
+plt.plot(scaler.inverse_transform(dataset[-90:]))
+plt.plot(testPredict[-90:])
+plt.show()
+
+print(mean_squared_error(testY, testPredict ))
